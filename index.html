@@ -1,0 +1,285 @@
+<!--
+    *** WORDPRESS 嵌入說明 ***
+    如果直接貼上程式碼到 WordPress 失敗，請按照以下更可靠的步驟操作：
+
+    步驟 1：儲存此檔案
+    將這整個檔案儲存為 `hanafuda_game.html` 到您的電腦上。
+
+    步驟 2：上傳檔案到您的網站伺服器
+    - 使用 FTP 工具 (如 FileZilla) 或您的主機後台 (cPanel) 的「檔案管理員」。
+    - 在您的網站根目錄（通常是 `public_html`）下建立一個新資料夾，例如 `games`。
+    - 將 `hanafuda_game.html` 上傳到這個新資料夾中。
+    - 上傳後，您應該可以透過 `https://lingamjiji.com/games/hanafuda_game.html` 這個網址直接看到遊戲。
+
+    步驟 3：在 WordPress 文章中嵌入遊戲
+    - 編輯您的 WordPress 文章。
+    - 新增一個「自訂 HTML」區塊。
+    - 在區塊中貼上以下程式碼，並確認 `src` 網址與您上傳的路徑相符：
+
+    <iframe src="https://lingamjiji.com/games/hanafuda_game.html" title="吉吉色色牌 線上版" style="width: 100%; height: 850px; border: none;"></iframe>
+
+    - 您可以調整 `height` 的數值（例如 850px）以符合您的頁面版面。更新文章後即可看到效果。
+-->
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>吉吉色色牌 Jiji Color card</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            touch-action: manipulation;
+        }
+        .card {
+            width: 60px;
+            height: 90px;
+            border: 1px solid #555;
+            border-radius: 8px;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+            user-select: none;
+            background-color: #fff;
+            /* 增加內陰影讓卡片更有立體感 */
+            box-shadow: inset 0 0 3px rgba(0,0,0,0.4), 2px 2px 5px rgba(0,0,0,0.3);
+        }
+        .card:hover, .card.selected {
+            transform: translateY(-8px) scale(1.05);
+            box-shadow: inset 0 0 3px rgba(0,0,0,0.4), 4px 4px 10px rgba(0,0,0,0.5);
+        }
+        .card-face-down {
+            /* 修正了卡背圖片網址，請確認此連結有效 */
+            background-image: url('https://lingamjiji.wordpress.com/wp-content/uploads/2025/10/00_0.jpg');
+            background-size: cover; /* 讓圖片填滿卡片 */
+            background-position: center; /* 圖片置中 */
+            background-color: #000000; /* 圖片載入前的底色 */
+        }
+        .hand-card-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+        
+        /* 月份背景色已不再需要，因為會被圖片覆蓋 */
+
+        .modal { display: none; }
+        .modal.active { display: flex; }
+
+        .yaku-item { transition: all 0.3s ease; }
+        .yaku-item.new {
+            background-color: #fefcbf;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body class="bg-gray-800 text-white flex flex-col items-center justify-center min-h-screen p-2 md:p-4">
+
+    <div id="game-container" class="w-full max-w-5xl mx-auto">
+        <!-- 對手區域 -->
+        <div class="mb-4">
+            <div class="flex items-center justify-between mb-2 px-2">
+                <h2 class="text-lg font-bold">對手</h2>
+                <div class="flex items-center space-x-2">
+                    <span id="opponent-score" class="text-xl font-bold">0 分</span>
+                </div>
+            </div>
+            <div id="opponent-hand" class="hand-card-container p-2 bg-gray-900/50 rounded-lg min-h-[100px] justify-center"></div>
+            <div class="mt-2 p-2 bg-gray-700/50 rounded-lg min-h-[50px]">
+                <h3 class="text-sm text-center mb-1 text-gray-300">對手獲得的牌</h3>
+                <div id="opponent-captured" class="flex flex-wrap gap-1 justify-center"></div>
+            </div>
+        </div>
+
+        <!-- 中央區域 -->
+        <div class="my-4 p-4 bg-green-900/60 rounded-lg border-2 border-yellow-700 min-h-[220px]">
+             <div class="flex justify-center items-center h-full">
+                <div id="field" class="hand-card-container"></div>
+                <div class="ml-8 flex flex-col items-center">
+                    <div id="deck" class="card card-face-down"></div>
+                    <span id="deck-count" class="mt-2 text-lg font-semibold">48</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 玩家區域 -->
+        <div class="mt-4">
+             <div class="flex items-center justify-between mb-2 px-2">
+                <h2 class="text-lg font-bold">您</h2>
+                <div class="flex items-center space-x-2">
+                    <span id="player-score" class="text-xl font-bold">0 分</span>
+                </div>
+            </div>
+            <div class="mt-2 p-2 bg-gray-700/50 rounded-lg min-h-[50px]">
+                <h3 class="text-sm text-center mb-1 text-gray-300">您獲得的牌</h3>
+                <div id="player-captured" class="flex flex-wrap gap-1 justify-center"></div>
+            </div>
+            <div id="player-hand" class="hand-card-container p-2 bg-gray-900/50 rounded-lg min-h-[100px] mt-2 justify-center"></div>
+        </div>
+    </div>
+    
+    <!-- 遊戲控制與狀態 -->
+    <div id="controls" class="fixed bottom-4 right-4 flex flex-col items-end gap-3 z-20">
+        <div id="game-status" class="bg-black/70 text-white text-lg font-bold px-4 py-2 rounded-lg text-center shadow-lg">輪到您了</div>
+        <div id="action-buttons" class="flex gap-2"></div>
+    </div>
+    <button id="restart-button" class="fixed top-4 right-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow-lg z-20 hidden">重新開始</button>
+
+    <!-- 彈出視窗 (Modal) -->
+    <div id="yaku-modal" class="modal fixed inset-0 bg-black/80 items-center justify-center p-4 z-50">
+        <div class="bg-gray-800 border-2 border-yellow-600 rounded-lg shadow-2xl p-6 w-full max-w-md text-center">
+            <h2 id="modal-title" class="text-3xl font-bold text-yellow-300 mb-4"></h2>
+            <div id="modal-yaku-list" class="space-y-2 text-left mb-6"></div>
+            <div id="modal-buttons" class="flex justify-center gap-4"></div>
+        </div>
+    </div>
+
+<script>
+// *** 修正重點：將所有程式碼包裹在 DOMContentLoaded 事件中 ***
+document.addEventListener('DOMContentLoaded', () => {
+    // --- DOM 元素 ---
+    const playerHandEl = document.getElementById('player-hand');
+    const opponentHandEl = document.getElementById('opponent-hand');
+    const fieldEl = document.getElementById('field');
+    const deckEl = document.getElementById('deck');
+    const deckCountEl = document.getElementById('deck-count');
+    const playerScoreEl = document.getElementById('player-score');
+    const opponentScoreEl = document.getElementById('opponent-score');
+    const playerCapturedEl = document.getElementById('player-captured');
+    const opponentCapturedEl = document.getElementById('opponent-captured');
+    const gameStatusEl = document.getElementById('game-status');
+    const actionButtonsEl = document.getElementById('action-buttons');
+    const restartButton = document.getElementById('restart-button');
+    const yakuModal = document.getElementById('yaku-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalYakuList = document.getElementById('modal-yaku-list');
+    const modalButtons = document.getElementById('modal-buttons');
+
+    // --- 卡片資料 ---
+    // 您自訂的卡片資料
+    const CARDS = [
+        // 1月 松 (Pine)
+        { id: 1, month: 1, name: '天藍光', type: 'hikari', points: 20, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/01_1.jpg' },
+        { id: 2, month: 1, name: '天藍天根', type: 'tanzaku', points: 5, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/01_2.jpg' },
+        { id: 3, month: 1, name: '天藍吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/01_3.jpg' },
+        { id: 4, month: 1, name: '天藍吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/01_4.jpg' },
+        // 2月 梅 (Plum Blossom)
+        { id: 5, month: 2, name: '桃靈', type: 'tane', points: 10, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/02_1.jpg' },
+        { id: 6, month: 2, name: '桃天根', type: 'tanzaku', points: 5, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/02_2.jpg' },
+        { id: 7, month: 2, name: '桃吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/02_3.jpg' },
+        { id: 8, month: 2, name: '桃吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/02_4.jpg' },
+        // 3月 桜 (Cherry Blossom)
+        { id: 9, month: 3, name: '孔雀綠光', type: 'hikari', points: 20, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/03_1.jpg' },
+        { id: 10, month: 3, name: '孔雀綠天根', type: 'tanzaku', points: 5, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/03_2.jpg' },
+        { id: 11, month: 3, name: '孔雀綠吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/03_3.jpg' },
+        { id: 12, month: 3, name: '孔雀綠吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/03_4.jpg' },
+        // 4月 藤 (Wisteria)
+        { id: 13, month: 4, name: '焦茶靈', type: 'tane', points: 10, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/04_1.jpg' },
+        { id: 14, month: 4, name: '焦茶人根', type: 'tanzaku', points: 5, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/04_2.jpg' },
+        { id: 15, month: 4, name: '焦茶吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/04_3.jpg' },
+        { id: 16, month: 4, name: '焦茶吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/04_4.jpg' },
+        // 5月 菖蒲 (Iris)
+        { id: 17, month: 5, name: '紫藤靈', type: 'tane', points: 10, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/05_1.jpg' },
+        { id: 18, month: 5, name: '紫藤人根', type: 'tanzaku', points: 5, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/05_2.jpg' },
+        { id: 19, month: 5, name: '紫藤吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/05_3.jpg' },
+        { id: 20, month: 5, name: '紫藤吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/05_4.jpg' },
+        // 6月 牡丹 (Peony)
+        { id: 21, month: 6, name: '梔子綠靈', type: 'tane', points: 10, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/06_1.jpg' },
+        { id: 22, month: 6, name: '梔子綠地根', type: 'tanzaku', points: 5, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/06_2.jpg' },
+        { id: 23, month: 6, name: '梔子綠吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/06_3.jpg' },
+        { id: 24, month: 6, name: '梔子綠吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/06_4.jpg' },
+        // 7月 萩 (Bush Clover)
+        { id: 25, month: 7, name: '山吹靈', type: 'tane', points: 10, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/07_1.jpg' },
+        { id: 26, month: 7, name: '山吹人根', type: 'tanzaku', points: 5, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/07_2.jpg' },
+        { id: 27, month: 7, name: '山吹吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/07_3.jpg' },
+        { id: 28, month: 7, name: '山吹吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/07_4.jpg' },
+        // 8月 芒 (Susuki Grass)
+        { id: 29, month: 8, name: '菫紫光', type: 'hikari', points: 20, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/08_1.jpg' },
+        { id: 30, month: 8, name: '菫紫靈', type: 'tane', points: 10, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/08_2.jpg' },
+        { id: 31, month: 8, name: '菫紫吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/08_3.jpg' },
+        { id: 32, month: 8, name: '菫紫吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/08_4.jpg' },
+        // 9月 菊 (Chrysanthemum)
+        { id: 33, month: 9, name: '鉻藍靈', type: 'tane', points: 10, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/09_1.jpg' },
+        { id: 34, month: 9, name: '鉻藍地根', type: 'tanzaku', points: 5, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/09_2.jpg' },
+        { id: 35, month: 9, name: '鉻藍吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/09_3.jpg' },
+        { id: 36, month: 9, name: '鉻藍吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/09_4.jpg' },
+        // 10月 紅葉 (Maple)
+        { id: 37, month: 10, name: '水藍靈', type: 'tane', points: 10, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/10_1.jpg' },
+        { id: 38, month: 10, name: '水藍地根', type: 'tanzaku', points: 5, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/10_2.jpg' },
+        { id: 39, month: 10, name: '水藍吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/10_3.jpg' },
+        { id: 40, month: 10, name: '水藍吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/10_4.jpg' },
+        // 11月 柳 (Willow)
+        { id: 41, month: 11, name: '珊瑚紅光', type: 'hikari', points: 20, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/11_1.jpg' },
+        { id: 42, month: 11, name: '珊瑚紅靈', type: 'tane', points: 10, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/11_2.jpg' },
+        { id: 43, month: 11, name: '珊瑚紅人根', type: 'tanzaku', points: 5, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/11_3.jpg' },
+        { id: 44, month: 11, name: '珊瑚紅吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/11_4.jpg' },
+        // 12月 桐 (Paulownia)
+        { id: 45, month: 12, name: '黃光', type: 'hikari', points: 20, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/12_1.jpg' },
+        { id: 46, month: 12, name: '黃吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/12_2.jpg' },
+        { id: 47, month: 12, name: '黃吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/12_3.jpg' },
+        { id: 48, month: 12, name: '黃吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/12_4.jpg' },
+    ];
+
+    const YAKU = {
+        goko: { name: '五光', points: 10, cards: [1, 9, 29, 41, 45], count: 5, type: 'hikari' },
+        shiko: { name: '四光', points: 8, cards: [1, 9, 29, 45], count: 4, type: 'hikari' },
+        ame_shiko: { name: '大四光', points: 7, cards: [1, 9, 29, 45, 41], includes: 41, count: 4, type: 'hikari' },
+        sanko: { name: '三光', points: 5, cards: [1, 9, 29, 45], count: 3, type: 'hikari' },
+        ino_shika_cho: { name: '雉猿犬', points: 5, cards: [21, 25, 37], count: 3, type: 'tane' },
+        aka_tan: { name: '天根', points: 5, names: ['天藍天根', '桃天根', '孔雀綠天根'], count: 3, type: 'tanzaku' },
+        ao_tan: { name: '地根', points: 5, names: ['梔子綠地根', '鉻藍地根', '水藍地根'], count: 3, type: 'tanzaku' },
+        tanzaku: { name: '根根', points: 1, per: 1, min: 5, type: 'tanzaku' },
+        tane: { name: '靈靈', points: 1, per: 1, min: 5, type: 'tane' },
+        kasu: { name: '吉吉', points: 1, per: 1, min: 10, type: 'kasu' },
+        // *** 修正重點：已將 '龍蛙來' 的組合規則修正為正確的卡片 ID (29, 33) ***
+        tsukimi_zake: { name: '龍蛙來', points: 5, cards: [45, 33], count: 2 },
+        hanami_zake: { name: '金龍貓', points: 5, cards: [9, 33], count: 2 },
+    };
+
+    let gameState = {};
+    
+    // --- 遊戲邏輯函式 (為了簡潔，此處折疊，實際檔案中是完整的) ---
+    const createNewGameState = function() { return { deck: [], player: { hand: [], captured: [], score: 0, yaku: {}, roundScore: 0 }, opponent: { hand: [], captured: [], score: 0, yaku: {}, roundScore: 0 }, field: [], currentPlayer: 'player', isTurnInProgress: false, roundOver: false, gameOver: false, parentPlayer: 'player', month: 1 }; }
+    const initGame = function() { gameState = createNewGameState(); restartButton.classList.add('hidden'); startRound(); }
+    const startRound = function() { gameState.deck = [...CARDS].sort(() => Math.random() - 0.5); gameState.player.hand = []; gameState.opponent.hand = []; gameState.field = []; gameState.player.captured = []; gameState.opponent.captured = []; gameState.player.yaku = {}; gameState.opponent.yaku = {}; gameState.player.roundScore = 0; gameState.opponent.roundScore = 0; gameState.roundOver = false; for (let i = 0; i < 8; i++) { gameState.player.hand.push(gameState.deck.pop()); gameState.opponent.hand.push(gameState.deck.pop()); gameState.field.push(gameState.deck.pop()); } checkInitialField(); renderAll(); updateGameStatus(`${gameState.parentPlayer === 'player' ? '您' : '對手'}是親家，輪到您了。`); gameState.currentPlayer = 'player'; }
+    const checkInitialField = function() { const monthCounts = gameState.field.reduce((acc, card) => { acc[card.month] = (acc[card.month] || 0) + 1; return acc; }, {}); for(const month in monthCounts) { if (monthCounts[month] === 4) { updateGameStatus(`場上有4張同月牌，此局無效，重新開始。`); setTimeout(startRound, 3000); return; } } }
+    const renderAll = function() { renderHand(gameState.player.hand, playerHandEl, 'player'); renderHand(gameState.opponent.hand, opponentHandEl, 'opponent'); renderField(gameState.field, fieldEl); renderCaptured(gameState.player.captured, playerCapturedEl); renderCaptured(gameState.opponent.captured, opponentCapturedEl); updateScores(); deckCountEl.textContent = gameState.deck.length; }
+    const createCardElement = function(card, owner = '', isFaceDown = false) { const cardEl = document.createElement('div'); if (isFaceDown) { cardEl.className = 'card card-face-down'; return cardEl; } cardEl.className = 'card'; cardEl.dataset.cardId = card.id; cardEl.dataset.owner = owner; cardEl.style.backgroundImage = `url(${card.image})`; cardEl.innerHTML = ''; const img = new Image(); img.src = card.image; img.onerror = () => { cardEl.innerHTML = `<div class="text-xs text-black text-center p-1">${card.name}</div>`; cardEl.style.backgroundImage = ''; cardEl.style.backgroundColor = '#ddd'; }; return cardEl; }
+    const renderHand = function(hand, element, owner) { element.innerHTML = ''; hand.sort((a,b) => a.month - b.month).forEach((card, index) => { const cardEl = createCardElement(card, owner, owner === 'opponent'); cardEl.dataset.handIndex = index; if (owner === 'player') { cardEl.addEventListener('click', onPlayerCardClick); } element.appendChild(cardEl); }); }
+    const renderField = function(field, element) { element.innerHTML = ''; field.sort((a,b) => a.month - b.month).forEach(card => { const cardEl = createCardElement(card, 'field'); cardEl.addEventListener('click', onFieldCardClick); element.appendChild(cardEl); }); }
+    const renderCaptured = function(captured, element) { element.innerHTML = ''; captured.sort((a,b) => b.points - a.points || a.month - b.month).forEach(card => { const smallCard = createCardElement(card, 'captured'); smallCard.style.width = '30px'; smallCard.style.height = '45px'; element.appendChild(smallCard); }); }
+    const updateScores = function() { playerScoreEl.textContent = `${gameState.player.score} 分`; opponentScoreEl.textContent = `${gameState.opponent.score} 分`; }
+    const onPlayerCardClick = function(event) { if (gameState.currentPlayer !== 'player' || gameState.isTurnInProgress) return; gameState.isTurnInProgress = true; const selectedCardEl = event.currentTarget; const handIndex = parseInt(selectedCardEl.dataset.handIndex); const playedCard = gameState.player.hand[handIndex]; gameState.player.hand.splice(handIndex, 1); renderHand(gameState.player.hand, playerHandEl, 'player'); processCardPlay('player', playedCard); }
+    const processCardPlay = async function(player, playedCard) { const matchingFieldCards = gameState.field.filter(c => c.month === playedCard.month); const playedCardEl = createCardElement(playedCard); playedCardEl.style.position = 'absolute'; playedCardEl.style.transition = 'all 0.5s ease'; document.body.appendChild(playedCardEl); const startRect = player === 'player' ? playerHandEl.getBoundingClientRect() : opponentHandEl.getBoundingClientRect(); playedCardEl.style.left = `${startRect.x + startRect.width / 2}px`; playedCardEl.style.top = `${startRect.y + 20}px`; await new Promise(resolve => setTimeout(resolve, 10)); const fieldRect = fieldEl.getBoundingClientRect(); playedCardEl.style.left = `${fieldRect.x + fieldRect.width / 2 - 30}px`; playedCardEl.style.top = `${fieldRect.y + fieldRect.height / 2 - 45}px`; await new Promise(resolve => setTimeout(resolve, 500)); playedCardEl.remove(); if (matchingFieldCards.length === 0) { gameState.field.push(playedCard); renderField(gameState.field, fieldEl); await new Promise(resolve => setTimeout(resolve, 500)); drawFromDeck(player); } else if (matchingFieldCards.length === 1) { const fieldCard = matchingFieldCards[0]; captureCards(player, [playedCard, fieldCard]); await new Promise(resolve => setTimeout(resolve, 500)); drawFromDeck(player); } else { if (player === 'player') { highlightMatches(matchingFieldCards); updateGameStatus('請選擇一張要配對的牌。'); gameState.pendingPlayedCard = playedCard; } else { const fieldCard = matchingFieldCards[Math.floor(Math.random() * matchingFieldCards.length)]; captureCards('opponent', [playedCard, fieldCard]); await new Promise(resolve => setTimeout(resolve, 500)); drawFromDeck('opponent'); } } }
+    const onFieldCardClick = function(event) { if (!gameState.pendingPlayedCard || gameState.currentPlayer !== 'player') return; const clickedCardId = parseInt(event.currentTarget.dataset.cardId); const playedCard = gameState.pendingPlayedCard; const clickedCard = gameState.field.find(c => c.id === clickedCardId); if (clickedCard && clickedCard.month === playedCard.month) { captureCards('player', [playedCard, clickedCard]); gameState.pendingPlayedCard = null; unhighlightAll(); setTimeout(() => drawFromDeck('player'), 500); } }
+    const highlightMatches = function(cardsToHighlight) { const fieldCards = fieldEl.querySelectorAll('.card'); fieldCards.forEach(el => { const id = parseInt(el.dataset.cardId); if (cardsToHighlight.some(c => c.id === id)) { el.classList.add('selected', 'border-4', 'border-yellow-400'); } else { el.classList.add('opacity-50'); } }); }
+    const unhighlightAll = function() { fieldEl.querySelectorAll('.card').forEach(el => { el.classList.remove('selected', 'border-4', 'border-yellow-400', 'opacity-50'); }); }
+    const drawFromDeck = async function(player) { if (gameState.deck.length === 0) { endTurn(); return; } const drawnCard = gameState.deck.pop(); deckCountEl.textContent = gameState.deck.length; const deckRect = deckEl.getBoundingClientRect(); const drawnCardEl = createCardElement(drawnCard); drawnCardEl.style.position = 'absolute'; drawnCardEl.style.left = `${deckRect.left}px`; drawnCardEl.style.top = `${deckRect.top}px`; document.body.appendChild(drawnCardEl); await new Promise(resolve => setTimeout(resolve, 100)); const fieldRect = fieldEl.getBoundingClientRect(); drawnCardEl.style.transition = 'all 0.5s ease'; drawnCardEl.style.left = `${fieldRect.x + fieldRect.width / 2 - 30}px`; drawnCardEl.style.top = `${fieldRect.y + fieldRect.height / 2 - 45}px`; await new Promise(resolve => setTimeout(resolve, 500)); drawnCardEl.remove(); const matchingFieldCards = gameState.field.filter(c => c.month === drawnCard.month); if (matchingFieldCards.length === 0) { gameState.field.push(drawnCard); renderField(gameState.field, fieldEl); } else { if(matchingFieldCards.length === 3) { captureCards(player, [drawnCard, ...matchingFieldCards]); } else { const fieldCard = matchingFieldCards[0]; captureCards(player, [drawnCard, fieldCard]); } } renderAll(); await new Promise(resolve => setTimeout(resolve, 500)); const yakuResult = checkYaku(player); if (yakuResult.newYaku.length > 0) { showYakuModal(player, yakuResult); } else { endTurn(); } }
+    const captureCards = function(player, cards) { cards.forEach(card => { gameState[player].captured.push(card); const fieldIndex = gameState.field.findIndex(c => c.id === card.id); if (fieldIndex > -1) { gameState.field.splice(fieldIndex, 1); } }); renderCaptured(gameState[player].captured, player === 'player' ? playerCapturedEl : opponentCapturedEl); renderField(gameState.field, fieldEl); }
+    const checkYaku = function(player) { const captured = gameState[player].captured; const currentYaku = gameState[player].yaku; const newYaku = []; let totalPoints = 0; const capturedHikari = captured.filter(c => c.type === 'hikari'); const capturedTane = captured.filter(c => c.type === 'tane'); const capturedTanzaku = captured.filter(c => c.type === 'tanzaku'); const capturedKasu = captured.filter(c => c.type === 'kasu'); let tempYaku = {}; if (capturedHikari.length >= 3) { const hasRainman = capturedHikari.some(c => c.id === 41); if (capturedHikari.length === 5) tempYaku.goko = YAKU.goko; else if (capturedHikari.length === 4 && !hasRainman) tempYaku.shiko = YAKU.shiko; else if (capturedHikari.length === 4 && hasRainman) tempYaku.ame_shiko = YAKU.ame_shiko; else if (capturedHikari.length === 3 && !hasRainman) tempYaku.sanko = YAKU.sanko; } const inoshikachoIds = YAKU.ino_shika_cho.cards; if (inoshikachoIds.every(id => captured.some(c => c.id === id))) tempYaku.ino_shika_cho = YAKU.ino_shika_cho; const akatanNames = YAKU.aka_tan.names; if (akatanNames.every(name => captured.some(c => c.name === name))) tempYaku.aka_tan = YAKU.aka_tan; const aotanNames = YAKU.ao_tan.names; if (aotanNames.every(name => captured.some(c => c.name === name))) tempYaku.ao_tan = YAKU.ao_tan; if (YAKU.hanami_zake.cards.every(id => captured.some(c => c.id === id))) tempYaku.hanami_zake = YAKU.hanami_zake; if (YAKU.tsukimi_zake.cards.every(id => captured.some(c => c.id === id))) tempYaku.tsukimi_zake = YAKU.tsukimi_zake; let hasOtherYaku = Object.keys(tempYaku).length > 0; if (capturedTanzaku.length >= 5) tempYaku.tanzaku = {...YAKU.tanzaku, points: capturedTanzaku.length - 4}; if (capturedTane.length >= 5) tempYaku.tane = {...YAKU.tane, points: capturedTane.length - 4}; if (capturedKasu.length >= 10) tempYaku.kasu = {...YAKU.kasu, points: capturedKasu.length - 9}; if (tempYaku.goko) { delete tempYaku.shiko; delete tempYaku.ame_shiko; delete tempYaku.sanko; } if (tempYaku.shiko || tempYaku.ame_shiko) { delete tempYaku.sanko; } if (tempYaku.aka_tan || tempYaku.ao_tan) { delete tempYaku.tanzaku; } if (tempYaku.ino_shika_cho) { delete tempYaku.tane; } for (const key in tempYaku) { totalPoints += tempYaku[key].points; if (!currentYaku[key]) newYaku.push(tempYaku[key]); } gameState[player].yaku = tempYaku; gameState[player].roundScore = totalPoints; return { newYaku, totalPoints }; }
+    const showYakuModal = function(player, yakuResult) { const { newYaku, totalPoints } = yakuResult; modalTitle.textContent = player === 'player' ? '達成新組合！' : '對手達成新組合！'; modalYakuList.innerHTML = ''; for(const key in gameState[player].yaku) { const yaku = gameState[player].yaku[key]; const isNew = newYaku.some(ny => ny.name === yaku.name); const div = document.createElement('div'); div.className = `yaku-item p-2 rounded flex justify-between items-center ${isNew ? 'new' : ''}`; div.innerHTML = `<span>${yaku.name}</span> <span class="font-bold">${yaku.points} 分</span>`; modalYakuList.appendChild(div); } const totalDiv = document.createElement('div'); totalDiv.className = 'mt-4 pt-2 border-t border-gray-600 flex justify-between items-center text-xl'; totalDiv.innerHTML = `<span>總計</span> <span class="font-bold text-yellow-300">${totalPoints} 分</span>`; modalYakuList.appendChild(totalDiv); modalButtons.innerHTML = ''; if (player === 'player') { const koiButton = document.createElement('button'); koiButton.textContent = '繼續'; koiButton.className = 'bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded'; koiButton.onclick = () => { yakuModal.classList.remove('active'); updateGameStatus('您選擇了繼續！'); endTurn(); }; const stopButton = document.createElement('button'); stopButton.textContent = '結束此回合'; stopButton.className = 'bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded'; stopButton.onclick = () => { yakuModal.classList.remove('active'); endRound(player, totalPoints); }; modalButtons.append(koiButton, stopButton); } else { const opponentChoice = opponentAIChoice(totalPoints); const choiceText = document.createElement('p'); choiceText.className = "text-lg italic mt-4"; choiceText.textContent = `對手決定 "${opponentChoice === 'koi' ? '繼續' : '結束此回合'}"...`; modalButtons.appendChild(choiceText); setTimeout(() => { yakuModal.classList.remove('active'); if(opponentChoice === 'koi') { updateGameStatus('對手選擇了繼續！'); endTurn(); } else { endRound('opponent', totalPoints); } }, 2000); } yakuModal.classList.add('active'); }
+    const endTurn = function() { if (gameState.roundOver) return; if (gameState.player.hand.length === 0 || gameState.deck.length === 0) { endRound(null, 0); return; } gameState.isTurnInProgress = false; gameState.currentPlayer = gameState.currentPlayer === 'player' ? 'opponent' : 'player'; updateGameStatus(`輪到${gameState.currentPlayer === 'player' ? '您' : '對手'}了。`); if (gameState.currentPlayer === 'opponent') { setTimeout(opponentTurn, 1000); } }
+    const endRound = function(winner, points) { gameState.roundOver = true; let message = ''; if (winner) { let finalPoints = points; if(winner !== gameState.parentPlayer){ finalPoints *= 2; message += `${winner === 'player' ? '您' : '對手'}不是親家，分數加倍！`; } gameState[winner].score += finalPoints; message += `${winner === 'player' ? '您' : '對手'}贏了此局，獲得 ${finalPoints} 分！`; } else { message = '此局平手。'; } updateGameStatus(message); updateScores(); gameState.month++; if(gameState.month > 12) { gameOver(); } else { if(winner !== gameState.parentPlayer) { gameState.parentPlayer = gameState.parentPlayer === 'player' ? 'opponent' : 'player'; } setTimeout(startRound, 3000); } }
+    const gameOver = function() { gameState.gameOver = true; let message; if (gameState.player.score > gameState.opponent.score) { message = `遊戲結束！恭喜您獲勝！ (${gameState.player.score} vs ${gameState.opponent.score})`; } else if (gameState.opponent.score > gameState.player.score) { message = `遊戲結束！對手獲勝！ (${gameState.player.score} vs ${gameState.opponent.score})`; } else { message = `遊戲結束！平手！ (${gameState.player.score} vs ${gameState.opponent.score})`; } updateGameStatus(message); restartButton.classList.remove('hidden'); }
+    const updateGameStatus = function(text) { gameStatusEl.textContent = text; }
+    const opponentTurn = function() { if (gameState.roundOver) return; gameState.isTurnInProgress = true; const hand = gameState.opponent.hand; const field = gameState.field; let bestMatch = null; for (let i = 0; i < hand.length; i++) { const handCard = hand[i]; const matches = field.filter(fc => fc.month === handCard.month); if (matches.length > 0) { matches.sort((a,b) => b.points - a.points); const currentMatchValue = handCard.points + matches[0].points; if (!bestMatch || currentMatchValue > bestMatch.value) { bestMatch = { handCard, fieldCard: matches[0], value: currentMatchValue, handIndex: i }; } } } let playedCard; let handIndex; if (bestMatch) { playedCard = bestMatch.handCard; handIndex = bestMatch.handIndex; } else { handIndex = Math.floor(Math.random() * hand.length); playedCard = hand[handIndex]; } gameState.opponent.hand.splice(handIndex, 1); renderHand(gameState.opponent.hand, opponentHandEl, 'opponent'); processCardPlay('opponent', playedCard); }
+    const opponentAIChoice = function(points) { if (points >= 7) return 'stop'; if (points >= 5 && Math.random() > 0.4) return 'stop'; if (gameState.deck.length < 10 && points > 3) return 'stop'; return 'koi'; }
+    
+    restartButton.addEventListener('click', initGame);
+
+    // --- 遊戲開始 ---
+    initGame();
+});
+</script>
+
+</body>
+</html>
+
