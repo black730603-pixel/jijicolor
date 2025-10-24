@@ -1,285 +1,1107 @@
-<!--
-    *** WORDPRESS 嵌入說明 ***
-    如果直接貼上程式碼到 WordPress 失敗，請按照以下更可靠的步驟操作：
-
-    步驟 1：儲存此檔案
-    將這整個檔案儲存為 `hanafuda_game.html` 到您的電腦上。
-
-    步驟 2：上傳檔案到您的網站伺服器
-    - 使用 FTP 工具 (如 FileZilla) 或您的主機後台 (cPanel) 的「檔案管理員」。
-    - 在您的網站根目錄（通常是 `public_html`）下建立一個新資料夾，例如 `games`。
-    - 將 `hanafuda_game.html` 上傳到這個新資料夾中。
-    - 上傳後，您應該可以透過 `https://lingamjiji.com/games/hanafuda_game.html` 這個網址直接看到遊戲。
-
-    步驟 3：在 WordPress 文章中嵌入遊戲
-    - 編輯您的 WordPress 文章。
-    - 新增一個「自訂 HTML」區塊。
-    - 在區塊中貼上以下程式碼，並確認 `src` 網址與您上傳的路徑相符：
-
-    <iframe src="https://lingamjiji.com/games/hanafuda_game.html" title="吉吉色色牌 線上版" style="width: 100%; height: 850px; border: none;"></iframe>
-
-    - 您可以調整 `height` 的數值（例如 850px）以符合您的頁面版面。更新文章後即可看到效果。
--->
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>吉吉色色牌 Jiji Color card</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <title>黴菌射擊遊戲 V25 - 角色能力實裝</title>
     <style>
+        /* 使用 Tailwind 概念的自定義CSS讓遊戲看起來更美觀，並確保移動端友好 */
         body {
-            font-family: 'Noto Sans TC', sans-serif;
-            touch-action: manipulation;
-        }
-        .card {
-            width: 60px;
-            height: 90px;
-            border: 1px solid #555;
-            border-radius: 8px;
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            cursor: pointer;
-            transition: all 0.2s ease-in-out;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
-            user-select: none;
-            background-color: #fff;
-            /* 增加內陰影讓卡片更有立體感 */
-            box-shadow: inset 0 0 3px rgba(0,0,0,0.4), 2px 2px 5px rgba(0,0,0,0.3);
-        }
-        .card:hover, .card.selected {
-            transform: translateY(-8px) scale(1.05);
-            box-shadow: inset 0 0 3px rgba(0,0,0,0.4), 4px 4px 10px rgba(0,0,0,0.5);
-        }
-        .card-face-down {
-            /* 修正了卡背圖片網址，請確認此連結有效 */
-            background-image: url('https://lingamjiji.wordpress.com/wp-content/uploads/2025/10/00_0.jpg');
-            background-size: cover; /* 讓圖片填滿卡片 */
-            background-position: center; /* 圖片置中 */
-            background-color: #000000; /* 圖片載入前的底色 */
-        }
-        .hand-card-container {
             display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
+            flex-direction: column;
+            align-items: center;
             justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #2c3e50; /* 深藍色背景 */
+            font-family: 'Inter', sans-serif;
+            color: #ecf0f1;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        #game-title {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        #game-title h1 {
+            font-size: 1.8em;
+            color: #f1c40f;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+            margin: 0;
+        }
+
+        #game-container {
+            width: 95%;
+            max-width: 600px; /* 限制最大寬度 */
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            background-color: #34495e;
+            position: relative;
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 400px; /* 固定高度 */
+        }
+
+        #ui-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            font-size: 0.8em;
+            background-color: #2c3e50;
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
         }
         
-        /* 月份背景色已不再需要，因為會被圖片覆蓋 */
+        .game-info {
+            font-weight: bold;
+            flex: 1;
+            text-align: center;
+        }
+        .game-info:first-child { text-align: left; }
+        .game-info:last-child { text-align: right; }
 
-        .modal { display: none; }
-        .modal.active { display: flex; }
+        /* ------------------------------------- */
+        /* 生命值指示燈樣式 */
+        .life-indicators {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+        }
+        .life-dot {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            border: 2px solid #ecf0f1;
+            transition: background-color 0.3s;
+        }
+        .life-green { background-color: #2ecc71; }
+        .life-yellow { background-color: #f1c40f; }
+        .life-red { background-color: #e74c3c; }
+        .life-grey { background-color: #7f8c8d; }
+        /* ------------------------------------- */
 
-        .yaku-item { transition: all 0.3s ease; }
-        .yaku-item.new {
-            background-color: #fefcbf;
+
+        #controls {
+            padding: 15px;
+            width: 95%;
+            max-width: 600px;
+            display: flex;
+            gap: 0px;
+            margin-top: 10px;
+        }
+        
+        .control-button {
+            padding: 12px 0;
+            font-size: 0.9em;
+            font-weight: bold;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.1s, box-shadow 0.1s, transform 0.1s;
+            flex-grow: 1;
+            max-width: none;
+            border-radius: 0;
+        }
+
+        #leftButton, #rightButton {
+            background-color: #3498db;
+            box-shadow: 0 4px #2980b9;
+        }
+
+        /* 滿版按鈕的邊緣圓角 */
+        #leftButton {
+            border-top-left-radius: 8px;
+            border-bottom-left-radius: 8px;
+        }
+        #rightButton {
+            border-top-right-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+
+        /* 按鈕按壓效果 */
+        .control-button:active {
+            box-shadow: 0 0;
+            transform: translateY(4px);
+        }
+        #leftButton:active, #rightButton:active { box-shadow: 0 0 #2980b9; }
+
+
+        /* 遊戲開始/結束訊息框 */
+        #messageBox {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(44, 62, 80, 0.95);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            font-size: 1.0em;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+            gap: 10px;
+            transition: opacity 0.3s;
+        }
+        #messageBox h2 {
+            font-size: 1.0em;
+            margin-bottom: 5px;
+        }
+        #messageBox p {
+            font-size: 0.8em;
+            margin: 0;
+        }
+
+        /* 角色選擇容器: 2x2 Grid Layout */
+        #selection-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* 兩列等寬 */
+            gap: 10px;
+            margin-bottom: 15px;
+            justify-content: center;
+            width: 90%;
+            max-width: 250px; /* 限制網格總寬度，確保手機上居中且不擠 */
+        }
+        
+        /* 角色卡片樣式 */
+        .cannon-card {
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            border: 3px solid transparent;
+            transition: all 0.2s;
+            background-color: #34495e;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            user-select: none;
+            width: 100%; /* 填滿 Grid 欄位 */
+            box-sizing: border-box;
+        }
+        .cannon-card:hover {
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
+            transform: translateY(-2px);
+        }
+        .cannon-card.selected {
+            border-color: #f1c40f;
             transform: scale(1.05);
+        }
+        .cannon-card img {
+            /* 選擇介面圖片大小：45px x 45px (保持封面排版優化) */
+            width: 45px;
+            height: 45px;
+            border-radius: 4px;
+        }
+        .cannon-card p {
+            font-size: 0.7em;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        /* 開始/重新開始按鈕 (縮小面積) */
+        #startRestartButton {
+            padding: 8px 15px; /* 大幅縮小 padding */
+            font-size: 0.8em; /* 縮小字體 */
+            font-weight: bold;
+            color: white;
+            background-color: #e74c3c;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px #c0392b;
+            transition: background-color 0.1s, box-shadow 0.1s, transform 0.1s;
+        }
+        #startRestartButton:active {
+            box-shadow: 0 0;
+            transform: translateY(4px);
         }
     </style>
 </head>
-<body class="bg-gray-800 text-white flex flex-col items-center justify-center min-h-screen p-2 md:p-4">
+<body>
 
-    <div id="game-container" class="w-full max-w-5xl mx-auto">
-        <!-- 對手區域 -->
-        <div class="mb-4">
-            <div class="flex items-center justify-between mb-2 px-2">
-                <h2 class="text-lg font-bold">對手</h2>
-                <div class="flex items-center space-x-2">
-                    <span id="opponent-score" class="text-xl font-bold">0 分</span>
-                </div>
-            </div>
-            <div id="opponent-hand" class="hand-card-container p-2 bg-gray-900/50 rounded-lg min-h-[100px] justify-center"></div>
-            <div class="mt-2 p-2 bg-gray-700/50 rounded-lg min-h-[50px]">
-                <h3 class="text-sm text-center mb-1 text-gray-300">對手獲得的牌</h3>
-                <div id="opponent-captured" class="flex flex-wrap gap-1 justify-center"></div>
-            </div>
-        </div>
+    <div id="game-title">
+        <h1>靈根吉吉射爆霉運</h1>
+    </div>
 
-        <!-- 中央區域 -->
-        <div class="my-4 p-4 bg-green-900/60 rounded-lg border-2 border-yellow-700 min-h-[220px]">
-             <div class="flex justify-center items-center h-full">
-                <div id="field" class="hand-card-container"></div>
-                <div class="ml-8 flex flex-col items-center">
-                    <div id="deck" class="card card-face-down"></div>
-                    <span id="deck-count" class="mt-2 text-lg font-semibold">48</span>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-panel">
+            <div class="game-info">得分: <span id="scoreDisplay">0</span></div>
+            <div class="game-info">等級: <span id="levelDisplay">1</span></div>
+            <div class="game-info life-indicators-wrapper">
+                <div id="livesContainer" class="life-indicators">
+                    <!-- 從左到右: Life 3, 2, 1 -->
+                    <div id="life3" class="life-dot life-green"></div>
+                    <div id="life2" class="life-dot life-green"></div>
+                    <div id="life1" class="life-dot life-green"></div>
                 </div>
             </div>
         </div>
         
-        <!-- 玩家區域 -->
-        <div class="mt-4">
-             <div class="flex items-center justify-between mb-2 px-2">
-                <h2 class="text-lg font-bold">您</h2>
-                <div class="flex items-center space-x-2">
-                    <span id="player-score" class="text-xl font-bold">0 分</span>
-                </div>
-            </div>
-            <div class="mt-2 p-2 bg-gray-700/50 rounded-lg min-h-[50px]">
-                <h3 class="text-sm text-center mb-1 text-gray-300">您獲得的牌</h3>
-                <div id="player-captured" class="flex flex-wrap gap-1 justify-center"></div>
-            </div>
-            <div id="player-hand" class="hand-card-container p-2 bg-gray-900/50 rounded-lg min-h-[100px] mt-2 justify-center"></div>
+        <div id="messageBox">
+            <h2 id="messageTitle"></h2>
+            <!-- 角色選擇容器放在這裡 -->
+            <div id="selection-container"></div>
+            <p id="messageText"></p>
+            <button id="startRestartButton" class="control-button">開始遊戲</button>
         </div>
     </div>
     
-    <!-- 遊戲控制與狀態 -->
-    <div id="controls" class="fixed bottom-4 right-4 flex flex-col items-end gap-3 z-20">
-        <div id="game-status" class="bg-black/70 text-white text-lg font-bold px-4 py-2 rounded-lg text-center shadow-lg">輪到您了</div>
-        <div id="action-buttons" class="flex gap-2"></div>
-    </div>
-    <button id="restart-button" class="fixed top-4 right-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow-lg z-20 hidden">重新開始</button>
-
-    <!-- 彈出視窗 (Modal) -->
-    <div id="yaku-modal" class="modal fixed inset-0 bg-black/80 items-center justify-center p-4 z-50">
-        <div class="bg-gray-800 border-2 border-yellow-600 rounded-lg shadow-2xl p-6 w-full max-w-md text-center">
-            <h2 id="modal-title" class="text-3xl font-bold text-yellow-300 mb-4"></h2>
-            <div id="modal-yaku-list" class="space-y-2 text-left mb-6"></div>
-            <div id="modal-buttons" class="flex justify-center gap-4"></div>
-        </div>
+    <div id="controls">
+        <button id="leftButton" class="control-button">← (A)</button>
+        <button id="rightButton" class="control-button">→ (D)</button>
     </div>
 
-<script>
-// *** 修正重點：將所有程式碼包裹在 DOMContentLoaded 事件中 ***
-document.addEventListener('DOMContentLoaded', () => {
-    // --- DOM 元素 ---
-    const playerHandEl = document.getElementById('player-hand');
-    const opponentHandEl = document.getElementById('opponent-hand');
-    const fieldEl = document.getElementById('field');
-    const deckEl = document.getElementById('deck');
-    const deckCountEl = document.getElementById('deck-count');
-    const playerScoreEl = document.getElementById('player-score');
-    const opponentScoreEl = document.getElementById('opponent-score');
-    const playerCapturedEl = document.getElementById('player-captured');
-    const opponentCapturedEl = document.getElementById('opponent-captured');
-    const gameStatusEl = document.getElementById('game-status');
-    const actionButtonsEl = document.getElementById('action-buttons');
-    const restartButton = document.getElementById('restart-button');
-    const yakuModal = document.getElementById('yaku-modal');
-    const modalTitle = document.getElementById('modal-title');
-    const modalYakuList = document.getElementById('modal-yaku-list');
-    const modalButtons = document.getElementById('modal-buttons');
+    <script>
+        // =================================================================================
+        // 圖片自定義配置區塊
+        // =================================================================================
+        
+        // 砲台碰撞區域尺寸：70x70px
+        const CANNON_COLLISION_SIZE = 70;
+        // 遊戲內砲台圖片顯示尺寸：70x70px
+        const CANNON_DISPLAY_SIZE = 70;
+        
+        // 包含可選角色和隨機選項
+        const CANNONS_CONFIG = {
+            'cannon1': {
+                url: 'https://lingamjiji.com/wp-content/uploads/2025/10/427_70.png',
+                name: '破魔',
+                image: new Image(),
+                type: 'selectable',
+                // --- 破魔 (Pomo) 特性 ---
+                bulletRadius: 4, 
+                fireRateMultiplier: 2.0, // 較慢的射速 (200ms * 2.0 = 400ms)
+                bulletColor: '#3498db', // 藍色子彈
+                bulletDurability: 3, // 初始耐久度
+                description: '慢速、高穿透 (對普黴菌可穿透3次，對巨黴菌傷害x3)',
+            },
+            'cannon2': {
+                url: 'https://lingamjiji.com/wp-content/uploads/2025/10/429_70.png',
+                name: '正緣',
+                image: new Image(),
+                type: 'selectable',
+                // --- 正緣 (Zhengyuan) 特性 ---
+                bulletRadius: 2.5, // 較小
+                fireRateMultiplier: 1.0, // 正常射速 (200ms)
+                bulletColor: '#e74c3c', // 紅色子彈
+                description: '普通射速、霰彈 (同時發射三發小口徑子彈)',
+            },
+            'cannon3': {
+                url: 'https://lingamjiji.com/wp-content/uploads/2025/10/553_70.png',
+                name: '豐盛',
+                image: new Image(),
+                type: 'selectable',
+                // --- 豐盛 (Fengsheng) 特性 ---
+                bulletRadius: 4, // 正常
+                fireRateMultiplier: 0.5, // 更密集的射速 (200ms * 0.5 = 100ms)
+                bulletColor: '#f1c40f', // 黃色子彈
+                description: '密集射擊 (射速加快 50%)',
+            },
+            'random': {
+                // 使用佔位符圖片或預設繪製，此處用佔位符
+                url: 'https://placehold.co/70x70/3498db/FFFFFF?text=隨機',
+                name: '隨機',
+                image: new Image(),
+                type: 'random',
+                description: '隨機選取一個角色',
+            }
+        };
 
-    // --- 卡片資料 ---
-    // 您自訂的卡片資料
-    const CARDS = [
-        // 1月 松 (Pine)
-        { id: 1, month: 1, name: '天藍光', type: 'hikari', points: 20, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/01_1.jpg' },
-        { id: 2, month: 1, name: '天藍天根', type: 'tanzaku', points: 5, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/01_2.jpg' },
-        { id: 3, month: 1, name: '天藍吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/01_3.jpg' },
-        { id: 4, month: 1, name: '天藍吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/01_4.jpg' },
-        // 2月 梅 (Plum Blossom)
-        { id: 5, month: 2, name: '桃靈', type: 'tane', points: 10, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/02_1.jpg' },
-        { id: 6, month: 2, name: '桃天根', type: 'tanzaku', points: 5, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/02_2.jpg' },
-        { id: 7, month: 2, name: '桃吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/02_3.jpg' },
-        { id: 8, month: 2, name: '桃吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/02_4.jpg' },
-        // 3月 桜 (Cherry Blossom)
-        { id: 9, month: 3, name: '孔雀綠光', type: 'hikari', points: 20, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/03_1.jpg' },
-        { id: 10, month: 3, name: '孔雀綠天根', type: 'tanzaku', points: 5, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/03_2.jpg' },
-        { id: 11, month: 3, name: '孔雀綠吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/03_3.jpg' },
-        { id: 12, month: 3, name: '孔雀綠吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/03_4.jpg' },
-        // 4月 藤 (Wisteria)
-        { id: 13, month: 4, name: '焦茶靈', type: 'tane', points: 10, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/04_1.jpg' },
-        { id: 14, month: 4, name: '焦茶人根', type: 'tanzaku', points: 5, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/04_2.jpg' },
-        { id: 15, month: 4, name: '焦茶吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/04_3.jpg' },
-        { id: 16, month: 4, name: '焦茶吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/04_4.jpg' },
-        // 5月 菖蒲 (Iris)
-        { id: 17, month: 5, name: '紫藤靈', type: 'tane', points: 10, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/05_1.jpg' },
-        { id: 18, month: 5, name: '紫藤人根', type: 'tanzaku', points: 5, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/05_2.jpg' },
-        { id: 19, month: 5, name: '紫藤吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/05_3.jpg' },
-        { id: 20, month: 5, name: '紫藤吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/05_4.jpg' },
-        // 6月 牡丹 (Peony)
-        { id: 21, month: 6, name: '梔子綠靈', type: 'tane', points: 10, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/06_1.jpg' },
-        { id: 22, month: 6, name: '梔子綠地根', type: 'tanzaku', points: 5, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/06_2.jpg' },
-        { id: 23, month: 6, name: '梔子綠吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/06_3.jpg' },
-        { id: 24, month: 6, name: '梔子綠吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/06_4.jpg' },
-        // 7月 萩 (Bush Clover)
-        { id: 25, month: 7, name: '山吹靈', type: 'tane', points: 10, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/07_1.jpg' },
-        { id: 26, month: 7, name: '山吹人根', type: 'tanzaku', points: 5, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/07_2.jpg' },
-        { id: 27, month: 7, name: '山吹吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/07_3.jpg' },
-        { id: 28, month: 7, name: '山吹吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/07_4.jpg' },
-        // 8月 芒 (Susuki Grass)
-        { id: 29, month: 8, name: '菫紫光', type: 'hikari', points: 20, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/08_1.jpg' },
-        { id: 30, month: 8, name: '菫紫靈', type: 'tane', points: 10, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/08_2.jpg' },
-        { id: 31, month: 8, name: '菫紫吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/08_3.jpg' },
-        { id: 32, month: 8, name: '菫紫吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/08_4.jpg' },
-        // 9月 菊 (Chrysanthemum)
-        { id: 33, month: 9, name: '鉻藍靈', type: 'tane', points: 10, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/09_1.jpg' },
-        { id: 34, month: 9, name: '鉻藍地根', type: 'tanzaku', points: 5, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/09_2.jpg' },
-        { id: 35, month: 9, name: '鉻藍吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/09_3.jpg' },
-        { id: 36, month: 9, name: '鉻藍吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/09_4.jpg' },
-        // 10月 紅葉 (Maple)
-        { id: 37, month: 10, name: '水藍靈', type: 'tane', points: 10, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/10_1.jpg' },
-        { id: 38, month: 10, name: '水藍地根', type: 'tanzaku', points: 5, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/10_2.jpg' },
-        { id: 39, month: 10, name: '水藍吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/10_3.jpg' },
-        { id: 40, month: 10, name: '水藍吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/10_4.jpg' },
-        // 11月 柳 (Willow)
-        { id: 41, month: 11, name: '珊瑚紅光', type: 'hikari', points: 20, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/11_1.jpg' },
-        { id: 42, month: 11, name: '珊瑚紅靈', type: 'tane', points: 10, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/11_2.jpg' },
-        { id: 43, month: 11, name: '珊瑚紅人根', type: 'tanzaku', points: 5, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/11_3.jpg' },
-        { id: 44, month: 11, name: '珊瑚紅吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/11_4.jpg' },
-        // 12月 桐 (Paulownia)
-        { id: 45, month: 12, name: '黃光', type: 'hikari', points: 20, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/12_1.jpg' },
-        { id: 46, month: 12, name: '黃吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/12_2.jpg' },
-        { id: 47, month: 12, name: '黃吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/12_3.jpg' },
-        { id: 48, month: 12, name: '黃吉', type: 'kasu', points: 1, image: 'https://lingamjiji.com/wp-content/uploads/2024/12/12_4.jpg' },
-    ];
+        let selectedCannonId = 'random'; // 預設選擇隨機
+        let cannonImage = CANNONS_CONFIG[selectedCannonId].image; // 當前使用的圖片物件
+        let currentCannonConfig = {}; // 存儲當前角色的配置
+        const BASE_AUTO_FIRE_INTERVAL = 200; // 基礎自動射擊間隔 (毫秒)
 
-    const YAKU = {
-        goko: { name: '五光', points: 10, cards: [1, 9, 29, 41, 45], count: 5, type: 'hikari' },
-        shiko: { name: '四光', points: 8, cards: [1, 9, 29, 45], count: 4, type: 'hikari' },
-        ame_shiko: { name: '大四光', points: 7, cards: [1, 9, 29, 45, 41], includes: 41, count: 4, type: 'hikari' },
-        sanko: { name: '三光', points: 5, cards: [1, 9, 29, 45], count: 3, type: 'hikari' },
-        ino_shika_cho: { name: '雉猿犬', points: 5, cards: [21, 25, 37], count: 3, type: 'tane' },
-        aka_tan: { name: '天根', points: 5, names: ['天藍天根', '桃天根', '孔雀綠天根'], count: 3, type: 'tanzaku' },
-        ao_tan: { name: '地根', points: 5, names: ['梔子綠地根', '鉻藍地根', '水藍地根'], count: 3, type: 'tanzaku' },
-        tanzaku: { name: '根根', points: 1, per: 1, min: 5, type: 'tanzaku' },
-        tane: { name: '靈靈', points: 1, per: 1, min: 5, type: 'tane' },
-        kasu: { name: '吉吉', points: 1, per: 1, min: 10, type: 'kasu' },
-        // *** 修正重點：已將 '龍蛙來' 的組合規則修正為正確的卡片 ID (29, 33) ***
-        tsukimi_zake: { name: '龍蛙來', points: 5, cards: [45, 33], count: 2 },
-        hanami_zake: { name: '金龍貓', points: 5, cards: [9, 33], count: 2 },
-    };
+        // 預載入所有圖片
+        Object.values(CANNONS_CONFIG).forEach(cannon => {
+            cannon.image.onload = () => { cannon.image.isLoaded = true; };
+            cannon.image.onerror = () => { console.error(`圖片載入失敗: ${cannon.name}`); cannon.image.isLoaded = false; };
+            cannon.image.src = cannon.url;
+        });
 
-    let gameState = {};
-    
-    // --- 遊戲邏輯函式 (為了簡潔，此處折疊，實際檔案中是完整的) ---
-    const createNewGameState = function() { return { deck: [], player: { hand: [], captured: [], score: 0, yaku: {}, roundScore: 0 }, opponent: { hand: [], captured: [], score: 0, yaku: {}, roundScore: 0 }, field: [], currentPlayer: 'player', isTurnInProgress: false, roundOver: false, gameOver: false, parentPlayer: 'player', month: 1 }; }
-    const initGame = function() { gameState = createNewGameState(); restartButton.classList.add('hidden'); startRound(); }
-    const startRound = function() { gameState.deck = [...CARDS].sort(() => Math.random() - 0.5); gameState.player.hand = []; gameState.opponent.hand = []; gameState.field = []; gameState.player.captured = []; gameState.opponent.captured = []; gameState.player.yaku = {}; gameState.opponent.yaku = {}; gameState.player.roundScore = 0; gameState.opponent.roundScore = 0; gameState.roundOver = false; for (let i = 0; i < 8; i++) { gameState.player.hand.push(gameState.deck.pop()); gameState.opponent.hand.push(gameState.deck.pop()); gameState.field.push(gameState.deck.pop()); } checkInitialField(); renderAll(); updateGameStatus(`${gameState.parentPlayer === 'player' ? '您' : '對手'}是親家，輪到您了。`); gameState.currentPlayer = 'player'; }
-    const checkInitialField = function() { const monthCounts = gameState.field.reduce((acc, card) => { acc[card.month] = (acc[card.month] || 0) + 1; return acc; }, {}); for(const month in monthCounts) { if (monthCounts[month] === 4) { updateGameStatus(`場上有4張同月牌，此局無效，重新開始。`); setTimeout(startRound, 3000); return; } } }
-    const renderAll = function() { renderHand(gameState.player.hand, playerHandEl, 'player'); renderHand(gameState.opponent.hand, opponentHandEl, 'opponent'); renderField(gameState.field, fieldEl); renderCaptured(gameState.player.captured, playerCapturedEl); renderCaptured(gameState.opponent.captured, opponentCapturedEl); updateScores(); deckCountEl.textContent = gameState.deck.length; }
-    const createCardElement = function(card, owner = '', isFaceDown = false) { const cardEl = document.createElement('div'); if (isFaceDown) { cardEl.className = 'card card-face-down'; return cardEl; } cardEl.className = 'card'; cardEl.dataset.cardId = card.id; cardEl.dataset.owner = owner; cardEl.style.backgroundImage = `url(${card.image})`; cardEl.innerHTML = ''; const img = new Image(); img.src = card.image; img.onerror = () => { cardEl.innerHTML = `<div class="text-xs text-black text-center p-1">${card.name}</div>`; cardEl.style.backgroundImage = ''; cardEl.style.backgroundColor = '#ddd'; }; return cardEl; }
-    const renderHand = function(hand, element, owner) { element.innerHTML = ''; hand.sort((a,b) => a.month - b.month).forEach((card, index) => { const cardEl = createCardElement(card, owner, owner === 'opponent'); cardEl.dataset.handIndex = index; if (owner === 'player') { cardEl.addEventListener('click', onPlayerCardClick); } element.appendChild(cardEl); }); }
-    const renderField = function(field, element) { element.innerHTML = ''; field.sort((a,b) => a.month - b.month).forEach(card => { const cardEl = createCardElement(card, 'field'); cardEl.addEventListener('click', onFieldCardClick); element.appendChild(cardEl); }); }
-    const renderCaptured = function(captured, element) { element.innerHTML = ''; captured.sort((a,b) => b.points - a.points || a.month - b.month).forEach(card => { const smallCard = createCardElement(card, 'captured'); smallCard.style.width = '30px'; smallCard.style.height = '45px'; element.appendChild(smallCard); }); }
-    const updateScores = function() { playerScoreEl.textContent = `${gameState.player.score} 分`; opponentScoreEl.textContent = `${gameState.opponent.score} 分`; }
-    const onPlayerCardClick = function(event) { if (gameState.currentPlayer !== 'player' || gameState.isTurnInProgress) return; gameState.isTurnInProgress = true; const selectedCardEl = event.currentTarget; const handIndex = parseInt(selectedCardEl.dataset.handIndex); const playedCard = gameState.player.hand[handIndex]; gameState.player.hand.splice(handIndex, 1); renderHand(gameState.player.hand, playerHandEl, 'player'); processCardPlay('player', playedCard); }
-    const processCardPlay = async function(player, playedCard) { const matchingFieldCards = gameState.field.filter(c => c.month === playedCard.month); const playedCardEl = createCardElement(playedCard); playedCardEl.style.position = 'absolute'; playedCardEl.style.transition = 'all 0.5s ease'; document.body.appendChild(playedCardEl); const startRect = player === 'player' ? playerHandEl.getBoundingClientRect() : opponentHandEl.getBoundingClientRect(); playedCardEl.style.left = `${startRect.x + startRect.width / 2}px`; playedCardEl.style.top = `${startRect.y + 20}px`; await new Promise(resolve => setTimeout(resolve, 10)); const fieldRect = fieldEl.getBoundingClientRect(); playedCardEl.style.left = `${fieldRect.x + fieldRect.width / 2 - 30}px`; playedCardEl.style.top = `${fieldRect.y + fieldRect.height / 2 - 45}px`; await new Promise(resolve => setTimeout(resolve, 500)); playedCardEl.remove(); if (matchingFieldCards.length === 0) { gameState.field.push(playedCard); renderField(gameState.field, fieldEl); await new Promise(resolve => setTimeout(resolve, 500)); drawFromDeck(player); } else if (matchingFieldCards.length === 1) { const fieldCard = matchingFieldCards[0]; captureCards(player, [playedCard, fieldCard]); await new Promise(resolve => setTimeout(resolve, 500)); drawFromDeck(player); } else { if (player === 'player') { highlightMatches(matchingFieldCards); updateGameStatus('請選擇一張要配對的牌。'); gameState.pendingPlayedCard = playedCard; } else { const fieldCard = matchingFieldCards[Math.floor(Math.random() * matchingFieldCards.length)]; captureCards('opponent', [playedCard, fieldCard]); await new Promise(resolve => setTimeout(resolve, 500)); drawFromDeck('opponent'); } } }
-    const onFieldCardClick = function(event) { if (!gameState.pendingPlayedCard || gameState.currentPlayer !== 'player') return; const clickedCardId = parseInt(event.currentTarget.dataset.cardId); const playedCard = gameState.pendingPlayedCard; const clickedCard = gameState.field.find(c => c.id === clickedCardId); if (clickedCard && clickedCard.month === playedCard.month) { captureCards('player', [playedCard, clickedCard]); gameState.pendingPlayedCard = null; unhighlightAll(); setTimeout(() => drawFromDeck('player'), 500); } }
-    const highlightMatches = function(cardsToHighlight) { const fieldCards = fieldEl.querySelectorAll('.card'); fieldCards.forEach(el => { const id = parseInt(el.dataset.cardId); if (cardsToHighlight.some(c => c.id === id)) { el.classList.add('selected', 'border-4', 'border-yellow-400'); } else { el.classList.add('opacity-50'); } }); }
-    const unhighlightAll = function() { fieldEl.querySelectorAll('.card').forEach(el => { el.classList.remove('selected', 'border-4', 'border-yellow-400', 'opacity-50'); }); }
-    const drawFromDeck = async function(player) { if (gameState.deck.length === 0) { endTurn(); return; } const drawnCard = gameState.deck.pop(); deckCountEl.textContent = gameState.deck.length; const deckRect = deckEl.getBoundingClientRect(); const drawnCardEl = createCardElement(drawnCard); drawnCardEl.style.position = 'absolute'; drawnCardEl.style.left = `${deckRect.left}px`; drawnCardEl.style.top = `${deckRect.top}px`; document.body.appendChild(drawnCardEl); await new Promise(resolve => setTimeout(resolve, 100)); const fieldRect = fieldEl.getBoundingClientRect(); drawnCardEl.style.transition = 'all 0.5s ease'; drawnCardEl.style.left = `${fieldRect.x + fieldRect.width / 2 - 30}px`; drawnCardEl.style.top = `${fieldRect.y + fieldRect.height / 2 - 45}px`; await new Promise(resolve => setTimeout(resolve, 500)); drawnCardEl.remove(); const matchingFieldCards = gameState.field.filter(c => c.month === drawnCard.month); if (matchingFieldCards.length === 0) { gameState.field.push(drawnCard); renderField(gameState.field, fieldEl); } else { if(matchingFieldCards.length === 3) { captureCards(player, [drawnCard, ...matchingFieldCards]); } else { const fieldCard = matchingFieldCards[0]; captureCards(player, [drawnCard, fieldCard]); } } renderAll(); await new Promise(resolve => setTimeout(resolve, 500)); const yakuResult = checkYaku(player); if (yakuResult.newYaku.length > 0) { showYakuModal(player, yakuResult); } else { endTurn(); } }
-    const captureCards = function(player, cards) { cards.forEach(card => { gameState[player].captured.push(card); const fieldIndex = gameState.field.findIndex(c => c.id === card.id); if (fieldIndex > -1) { gameState.field.splice(fieldIndex, 1); } }); renderCaptured(gameState[player].captured, player === 'player' ? playerCapturedEl : opponentCapturedEl); renderField(gameState.field, fieldEl); }
-    const checkYaku = function(player) { const captured = gameState[player].captured; const currentYaku = gameState[player].yaku; const newYaku = []; let totalPoints = 0; const capturedHikari = captured.filter(c => c.type === 'hikari'); const capturedTane = captured.filter(c => c.type === 'tane'); const capturedTanzaku = captured.filter(c => c.type === 'tanzaku'); const capturedKasu = captured.filter(c => c.type === 'kasu'); let tempYaku = {}; if (capturedHikari.length >= 3) { const hasRainman = capturedHikari.some(c => c.id === 41); if (capturedHikari.length === 5) tempYaku.goko = YAKU.goko; else if (capturedHikari.length === 4 && !hasRainman) tempYaku.shiko = YAKU.shiko; else if (capturedHikari.length === 4 && hasRainman) tempYaku.ame_shiko = YAKU.ame_shiko; else if (capturedHikari.length === 3 && !hasRainman) tempYaku.sanko = YAKU.sanko; } const inoshikachoIds = YAKU.ino_shika_cho.cards; if (inoshikachoIds.every(id => captured.some(c => c.id === id))) tempYaku.ino_shika_cho = YAKU.ino_shika_cho; const akatanNames = YAKU.aka_tan.names; if (akatanNames.every(name => captured.some(c => c.name === name))) tempYaku.aka_tan = YAKU.aka_tan; const aotanNames = YAKU.ao_tan.names; if (aotanNames.every(name => captured.some(c => c.name === name))) tempYaku.ao_tan = YAKU.ao_tan; if (YAKU.hanami_zake.cards.every(id => captured.some(c => c.id === id))) tempYaku.hanami_zake = YAKU.hanami_zake; if (YAKU.tsukimi_zake.cards.every(id => captured.some(c => c.id === id))) tempYaku.tsukimi_zake = YAKU.tsukimi_zake; let hasOtherYaku = Object.keys(tempYaku).length > 0; if (capturedTanzaku.length >= 5) tempYaku.tanzaku = {...YAKU.tanzaku, points: capturedTanzaku.length - 4}; if (capturedTane.length >= 5) tempYaku.tane = {...YAKU.tane, points: capturedTane.length - 4}; if (capturedKasu.length >= 10) tempYaku.kasu = {...YAKU.kasu, points: capturedKasu.length - 9}; if (tempYaku.goko) { delete tempYaku.shiko; delete tempYaku.ame_shiko; delete tempYaku.sanko; } if (tempYaku.shiko || tempYaku.ame_shiko) { delete tempYaku.sanko; } if (tempYaku.aka_tan || tempYaku.ao_tan) { delete tempYaku.tanzaku; } if (tempYaku.ino_shika_cho) { delete tempYaku.tane; } for (const key in tempYaku) { totalPoints += tempYaku[key].points; if (!currentYaku[key]) newYaku.push(tempYaku[key]); } gameState[player].yaku = tempYaku; gameState[player].roundScore = totalPoints; return { newYaku, totalPoints }; }
-    const showYakuModal = function(player, yakuResult) { const { newYaku, totalPoints } = yakuResult; modalTitle.textContent = player === 'player' ? '達成新組合！' : '對手達成新組合！'; modalYakuList.innerHTML = ''; for(const key in gameState[player].yaku) { const yaku = gameState[player].yaku[key]; const isNew = newYaku.some(ny => ny.name === yaku.name); const div = document.createElement('div'); div.className = `yaku-item p-2 rounded flex justify-between items-center ${isNew ? 'new' : ''}`; div.innerHTML = `<span>${yaku.name}</span> <span class="font-bold">${yaku.points} 分</span>`; modalYakuList.appendChild(div); } const totalDiv = document.createElement('div'); totalDiv.className = 'mt-4 pt-2 border-t border-gray-600 flex justify-between items-center text-xl'; totalDiv.innerHTML = `<span>總計</span> <span class="font-bold text-yellow-300">${totalPoints} 分</span>`; modalYakuList.appendChild(totalDiv); modalButtons.innerHTML = ''; if (player === 'player') { const koiButton = document.createElement('button'); koiButton.textContent = '繼續'; koiButton.className = 'bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded'; koiButton.onclick = () => { yakuModal.classList.remove('active'); updateGameStatus('您選擇了繼續！'); endTurn(); }; const stopButton = document.createElement('button'); stopButton.textContent = '結束此回合'; stopButton.className = 'bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded'; stopButton.onclick = () => { yakuModal.classList.remove('active'); endRound(player, totalPoints); }; modalButtons.append(koiButton, stopButton); } else { const opponentChoice = opponentAIChoice(totalPoints); const choiceText = document.createElement('p'); choiceText.className = "text-lg italic mt-4"; choiceText.textContent = `對手決定 "${opponentChoice === 'koi' ? '繼續' : '結束此回合'}"...`; modalButtons.appendChild(choiceText); setTimeout(() => { yakuModal.classList.remove('active'); if(opponentChoice === 'koi') { updateGameStatus('對手選擇了繼續！'); endTurn(); } else { endRound('opponent', totalPoints); } }, 2000); } yakuModal.classList.add('active'); }
-    const endTurn = function() { if (gameState.roundOver) return; if (gameState.player.hand.length === 0 || gameState.deck.length === 0) { endRound(null, 0); return; } gameState.isTurnInProgress = false; gameState.currentPlayer = gameState.currentPlayer === 'player' ? 'opponent' : 'player'; updateGameStatus(`輪到${gameState.currentPlayer === 'player' ? '您' : '對手'}了。`); if (gameState.currentPlayer === 'opponent') { setTimeout(opponentTurn, 1000); } }
-    const endRound = function(winner, points) { gameState.roundOver = true; let message = ''; if (winner) { let finalPoints = points; if(winner !== gameState.parentPlayer){ finalPoints *= 2; message += `${winner === 'player' ? '您' : '對手'}不是親家，分數加倍！`; } gameState[winner].score += finalPoints; message += `${winner === 'player' ? '您' : '對手'}贏了此局，獲得 ${finalPoints} 分！`; } else { message = '此局平手。'; } updateGameStatus(message); updateScores(); gameState.month++; if(gameState.month > 12) { gameOver(); } else { if(winner !== gameState.parentPlayer) { gameState.parentPlayer = gameState.parentPlayer === 'player' ? 'opponent' : 'player'; } setTimeout(startRound, 3000); } }
-    const gameOver = function() { gameState.gameOver = true; let message; if (gameState.player.score > gameState.opponent.score) { message = `遊戲結束！恭喜您獲勝！ (${gameState.player.score} vs ${gameState.opponent.score})`; } else if (gameState.opponent.score > gameState.player.score) { message = `遊戲結束！對手獲勝！ (${gameState.player.score} vs ${gameState.opponent.score})`; } else { message = `遊戲結束！平手！ (${gameState.player.score} vs ${gameState.opponent.score})`; } updateGameStatus(message); restartButton.classList.remove('hidden'); }
-    const updateGameStatus = function(text) { gameStatusEl.textContent = text; }
-    const opponentTurn = function() { if (gameState.roundOver) return; gameState.isTurnInProgress = true; const hand = gameState.opponent.hand; const field = gameState.field; let bestMatch = null; for (let i = 0; i < hand.length; i++) { const handCard = hand[i]; const matches = field.filter(fc => fc.month === handCard.month); if (matches.length > 0) { matches.sort((a,b) => b.points - a.points); const currentMatchValue = handCard.points + matches[0].points; if (!bestMatch || currentMatchValue > bestMatch.value) { bestMatch = { handCard, fieldCard: matches[0], value: currentMatchValue, handIndex: i }; } } } let playedCard; let handIndex; if (bestMatch) { playedCard = bestMatch.handCard; handIndex = bestMatch.handIndex; } else { handIndex = Math.floor(Math.random() * hand.length); playedCard = hand[handIndex]; } gameState.opponent.hand.splice(handIndex, 1); renderHand(gameState.opponent.hand, opponentHandEl, 'opponent'); processCardPlay('opponent', playedCard); }
-    const opponentAIChoice = function(points) { if (points >= 7) return 'stop'; if (points >= 5 && Math.random() > 0.4) return 'stop'; if (gameState.deck.length < 10 && points > 3) return 'stop'; return 'koi'; }
-    
-    restartButton.addEventListener('click', initGame);
 
-    // --- 遊戲開始 ---
-    initGame();
-});
-</script>
+        // =================================================================================
+        // 全域常數與初始化
+        // =================================================================================
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const levelDisplay = document.getElementById('levelDisplay');
+        const leftButton = document.getElementById('leftButton');
+        const rightButton = document.getElementById('rightButton');
+        const messageBox = document.getElementById('messageBox');
+        const messageTitle = document.getElementById('messageTitle');
+        const messageText = document.getElementById('messageText');
+        const startRestartButton = document.getElementById('startRestartButton');
+        const selectionContainer = document.getElementById('selection-container');
+        const lifeDots = [
+            document.getElementById('life1'),
+            document.getElementById('life2'),
+            document.getElementById('life3')
+        ];
+
+        // 黴菌常數
+        const MOLD_COMMON_COLOR = '#2ecc71';
+        const MOLD_NORMAL_RADIUS = 15;
+        const MOLD_BASE_SPEED = 0.8;
+        
+        // 遊戲狀態變數
+        let cannon = {};
+        let bullets = [];
+        let mold = [];
+        let score = 0;
+        let lives = 3;
+        let isGameOver = false;
+        let isGameStarted = false;
+        let gameLoopRunning = false;
+        let lastMoldSpawnTime = 0;
+        let moldSpawnInterval = 1000;
+        let moldSpeed = MOLD_BASE_SPEED;
+        
+        // 玩家輸入狀態
+        let leftPressed = false;
+        let rightPressed = false;
+
+        // 自動射擊狀態
+        let autoFireInterval = BASE_AUTO_FIRE_INTERVAL;
+        let lastFireTime = 0;
+        
+        // 擊中效果狀態
+        let explosions = [];
+
+        // 傷害視覺效果狀態
+        let damageEffectActive = false;
+        const damageDuration = 300;
+        let damageStartTime = 0;
+        let shakeOffset = 0;
+        
+        // 難度控制變數
+        let difficultyLevel = 1;
+        const DIFFICULTY_STEP_SCORE = 120;
+        let nextDifficultyScore = DIFFICULTY_STEP_SCORE;
+        const DIFFICULTY_FACTOR = 1.1;
+        
+        // 黴菌生成輪替邏輯
+        let moldTypeCounter = 0;
+        const MOLD_TYPES_SEQUENCE = ['normal', 'normal', 'huge', 'normal', 'lively', 'normal', 'dashing'];
+
+        // ----------------------------------------------------
+        // 輔助函數: 根據等級計算背景顏色 (從白到黑)
+        // ----------------------------------------------------
+        function getBackgroundColor(level) {
+            const maxLevelForColor = 100;
+            const progress = Math.min(1, (level - 1) / (maxLevelForColor - 1));
+            const colorValue = Math.floor(255 * (1 - progress));
+            return `rgb(${colorValue}, ${colorValue}, ${colorValue})`;
+        }
+
+        // ----------------------------------------------------
+        // 輔助函數: 創建不同類型的黴菌
+        // ----------------------------------------------------
+        function createMold(type, baseSpeed) {
+            let m = {
+                x: Math.random() * (canvas.width - MOLD_NORMAL_RADIUS * 2) + MOLD_NORMAL_RADIUS,
+                y: -MOLD_NORMAL_RADIUS,
+                radius: MOLD_NORMAL_RADIUS,
+                type: type,
+                health: 1,
+                ySpeed: baseSpeed,
+                hSpeed: 0,
+                color: MOLD_COMMON_COLOR,
+                dashTimer: 0,
+                isDashing: false,
+                dashInterval: 3000 * (1 / baseSpeed),
+                normalRadius: MOLD_NORMAL_RADIUS,
+                isHit: false,
+                hitTimer: 0,
+            };
+
+            switch (type) {
+                case 'huge':
+                    m.health = 12;
+                    m.maxRadius = 25;
+                    m.medRadius = 20;
+                    m.radius = m.maxRadius;
+                    m.ySpeed = baseSpeed / 3;
+                    m.x = Math.random() * (canvas.width - m.radius * 2) + m.radius;
+                    break;
+                case 'lively':
+                    m.hSpeed = 1.5 * (Math.random() > 0.5 ? 1 : -1);
+                    break;
+                case 'dashing':
+                    m.dashTimer = m.dashInterval + Math.random() * 1500;
+                    break;
+                case 'normal':
+                default:
+                    break;
+            }
+            return m;
+        }
+        
+        // 確保畫布尺寸適應容器
+        function resizeCanvas() {
+            const container = document.getElementById('game-container');
+            canvas.width = container.clientWidth;
+            canvas.height = 400;
+
+            if (cannon.x !== undefined) {
+                cannon.x = Math.max(0, Math.min(cannon.x, canvas.width - cannon.width));
+            } else {
+                cannon.x = canvas.width / 2 - (CANNON_COLLISION_SIZE / 2);
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // ----------------------------------------------------
+        // 角色選擇與畫面顯示
+        // ----------------------------------------------------
+
+        function selectCannon(id) {
+            selectedCannonId = id;
+            // 更新卡片視覺效果
+            document.querySelectorAll('.cannon-card').forEach(card => {
+                card.classList.remove('selected');
+                if (card.id === `card-${id}`) {
+                    card.classList.add('selected');
+                }
+            });
+            // 更新描述
+            const selectedConfig = CANNONS_CONFIG[id];
+            messageText.textContent = selectedConfig.description;
+        }
+        
+        function showCharacterSelection() {
+            selectionContainer.innerHTML = '';
+            messageTitle.textContent = '選擇你的吉吉';
+            startRestartButton.textContent = '開始遊戲';
+            messageText.textContent = CANNONS_CONFIG[selectedCannonId].description || ''; // 顯示預設角色的描述
+
+            Object.keys(CANNONS_CONFIG).forEach(id => {
+                const cannon = CANNONS_CONFIG[id];
+                const card = document.createElement('div');
+                card.id = `card-${id}`;
+                card.className = 'cannon-card';
+                
+                const img = document.createElement('img');
+                img.src = cannon.url;
+                img.width = CANNON_COLLISION_SIZE;
+                img.height = CANNON_COLLISION_SIZE;
+
+                const nameLabel = document.createElement('p');
+                nameLabel.textContent = cannon.name;
+
+                card.appendChild(img);
+                card.appendChild(nameLabel);
+                selectionContainer.appendChild(card);
+
+                card.addEventListener('click', () => selectCannon(id));
+            });
+            
+            // 確保預設角色被選中
+            selectCannon(selectedCannonId);
+
+            messageBox.style.display = 'flex';
+        }
+
+        // 初始化遊戲物件（在開始畫面上）
+        function initGame() {
+            score = 0;
+            lives = 3;
+            isGameOver = false;
+            isGameStarted = false;
+            bullets = [];
+            mold = [];
+            explosions = [];
+            
+            difficultyLevel = 1;
+            nextDifficultyScore = DIFFICULTY_STEP_SCORE;
+            moldSpeed = MOLD_BASE_SPEED;
+            moldSpawnInterval = 1000;
+            
+            // 砲台碰撞區域與顯示尺寸都是 70x70
+            cannon = {
+                width: CANNON_COLLISION_SIZE,
+                height: CANNON_COLLISION_SIZE,
+                imgWidth: CANNON_DISPLAY_SIZE,
+                imgHeight: CANNON_DISPLAY_SIZE,
+                x: canvas.width / 2 - (CANNON_COLLISION_SIZE / 2),
+                y: canvas.height - CANNON_COLLISION_SIZE,
+                speed: 4,
+                color: '#f39c12'
+            };
+            
+            updateUI();
+            
+            showCharacterSelection();
+
+            // 隱藏控制按鈕
+            leftButton.style.display = 'none';
+            rightButton.style.display = 'none';
+
+            // 確保畫布是白色背景 (等級 1)
+            ctx.fillStyle = getBackgroundColor(1);
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // 啟動遊戲
+        function startGame() {
+            let finalCannonId = selectedCannonId;
+            
+            // 處理隨機選擇邏輯
+            if (selectedCannonId === 'random') {
+                const selectableIds = Object.keys(CANNONS_CONFIG).filter(id => CANNONS_CONFIG[id].type === 'selectable');
+                finalCannonId = selectableIds[Math.floor(Math.random() * selectableIds.length)];
+            }
+            
+            // 設定當前使用的角色ID、圖片和配置
+            selectedCannonId = finalCannonId; 
+            cannonImage = CANNONS_CONFIG[finalCannonId].image;
+            currentCannonConfig = CANNONS_CONFIG[finalCannonId];
+
+            // 根據角色設定射速
+            const fireRateMultiplier = currentCannonConfig.fireRateMultiplier || 1.0;
+            autoFireInterval = BASE_AUTO_FIRE_INTERVAL * fireRateMultiplier;
+            
+            isGameStarted = true;
+            isGameOver = false;
+            hideMessage();
+            
+            // 顯示控制按鈕
+            leftButton.style.display = 'block';
+            rightButton.style.display = 'block';
+
+            // 重置時間戳記
+            lastMoldSpawnTime = performance.now();
+            lastFireTime = performance.now();
+            
+            // 啟動/繼續遊戲循環
+            if (!gameLoopRunning) {
+                gameLoopRunning = true;
+                requestAnimationFrame(gameLoop);
+            }
+        }
+        
+        /** 繪圖相關函數 **/
+
+        function drawCannon() {
+            const imgW = cannon.imgWidth; // 70
+            const imgH = cannon.imgHeight; // 70
+            // 圖片 X/Y 座標需要偏移，讓 70px 的圖片視覺上置中於 70px 的碰撞框 (偏移為 0)
+            const offset = (CANNON_COLLISION_SIZE - imgW) / 2;
+            const imgX = cannon.x + offset;
+            const imgY = cannon.y + offset;
+
+            if (cannonImage.isLoaded) {
+                ctx.drawImage(cannonImage, imgX, imgY, imgW, imgH);
+            } else {
+                // 預設繪製 (使用 70px 碰撞框作為視覺)
+                ctx.fillStyle = cannon.color;
+                ctx.fillRect(cannon.x, cannon.y, cannon.width, cannon.height);
+            }
+        }
+
+        function drawBullet(bullet) {
+            ctx.beginPath();
+            ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
+            ctx.fillStyle = bullet.color;
+            // 破魔子彈在還有耐久度時加一點光暈
+            if (bullet.type === 'pomo' && bullet.durability > 0) {
+                 ctx.shadowBlur = 5;
+                 ctx.shadowColor = 'white';
+            } else {
+                 ctx.shadowBlur = 0;
+            }
+            ctx.fill();
+            ctx.shadowBlur = 0; // 重置陰影
+            ctx.closePath();
+        }
+
+        function drawMold(m) {
+            ctx.fillStyle = m.color;
+            ctx.beginPath();
+            ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.closePath();
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.beginPath();
+            ctx.arc(m.x, m.y, m.radius * 0.6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.closePath();
+            
+            if (m.isHit) {
+                const opacity = m.hitTimer / 100;
+                ctx.strokeStyle = `rgba(255, 0, 0, ${opacity * 0.9})`;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(m.x, m.y, m.radius + 2, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.closePath();
+            }
+        }
+        
+        function drawExplosions() {
+            explosions.forEach(exp => {
+                const opacity = exp.life / exp.maxLife;
+                ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+                ctx.beginPath();
+                ctx.arc(exp.x, exp.y, exp.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+            });
+        }
+        
+        /** 邏輯更新相關函數 **/
+
+        function checkDifficultyUpgrade() {
+            if (score >= nextDifficultyScore) {
+                difficultyLevel++;
+                nextDifficultyScore += DIFFICULTY_STEP_SCORE;
+                
+                moldSpeed *= DIFFICULTY_FACTOR;
+                moldSpawnInterval /= DIFFICULTY_FACTOR;
+                moldSpawnInterval = Math.max(100, moldSpawnInterval);
+                
+                updateUI();
+            }
+        }
+
+        function updateLivesDisplay() {
+            lifeDots.forEach(dot => dot.className = 'life-dot');
+            
+            if (lives === 3) {
+                lifeDots[2].classList.add('life-green');
+                lifeDots[1].classList.add('life-green');
+                lifeDots[0].classList.add('life-green');
+            } else if (lives === 2) {
+                lifeDots[2].classList.add('life-grey');
+                lifeDots[1].classList.add('life-yellow');
+                lifeDots[0].classList.add('life-yellow');
+            } else if (lives === 1) {
+                lifeDots[2].classList.add('life-grey');
+                lifeDots[1].classList.add('life-grey');
+                lifeDots[0].classList.add('life-red');
+            } else {
+                lifeDots[2].classList.add('life-grey');
+                lifeDots[1].classList.add('life-grey');
+                lifeDots[0].classList.add('life-grey');
+            }
+        }
+
+        function updateUI() {
+            scoreDisplay.textContent = score;
+            levelDisplay.textContent = difficultyLevel;
+            updateLivesDisplay();
+        }
+        
+        function applyDamageVisuals() {
+            damageEffectActive = true;
+            damageStartTime = performance.now();
+        }
+
+        function updateDamageVisuals(timestamp) {
+            if (damageEffectActive) {
+                const elapsed = timestamp - damageStartTime;
+                if (elapsed < damageDuration) {
+                    shakeOffset = Math.sin(elapsed / 50 * Math.PI) * 5;
+                } else {
+                    damageEffectActive = false;
+                    shakeOffset = 0;
+                }
+            }
+        }
+
+        function drawDamageVisuals(timestamp) {
+            if (damageEffectActive) {
+                const elapsed = timestamp - damageStartTime;
+                const opacity = 1 - (elapsed / damageDuration);
+                ctx.fillStyle = `rgba(255, 0, 0, ${opacity * 0.4})`;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+        
+        function updateCannonPosition() {
+            if (rightPressed && cannon.x < canvas.width - cannon.width) {
+                cannon.x += cannon.speed;
+            } else if (leftPressed && cannon.x > 0) {
+                cannon.x -= cannon.speed;
+            }
+        }
+
+        function updateBullets() {
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                let b = bullets[i];
+                
+                // 處理正緣(cannon2)的斜向移動 (有 speedX/speedY 屬性)
+                if (b.speedX !== undefined) {
+                    b.x += b.speedX;
+                    b.y += b.speedY; // speedY 是負值，代表向上移動
+                } else {
+                    // 一般垂直移動 (破魔/豐盛)
+                    b.y -= b.speed;
+                }
+
+                // 檢查邊界移除
+                if (b.y < 0 || b.x < 0 || b.x > canvas.width) {
+                    bullets.splice(i, 1);
+                }
+            }
+        }
+
+        function updateMold() {
+            for (let i = mold.length - 1; i >= 0; i--) {
+                let m = mold[i];
+                
+                if (m.isHit) {
+                    m.hitTimer -= 16.67;
+                    if (m.hitTimer <= 0) {
+                        m.isHit = false;
+                        m.hitTimer = 0;
+                    }
+                }
+
+                if (m.type === 'lively') {
+                    m.x += m.hSpeed;
+                    if (m.x - m.radius < 0 || m.x + m.radius > canvas.width) {
+                        m.hSpeed *= -1;
+                    }
+                }
+                
+                if (m.type === 'dashing') {
+                    m.dashTimer -= 16.67;
+                    if (m.dashTimer <= 0 && m.isDashing === false) {
+                        m.isDashing = true;
+                        m.dashTimer = 200;
+                    }
+                    if (m.isDashing && m.dashTimer > 0) {
+                        m.y += m.ySpeed * 5;
+                    } else if (m.isDashing && m.dashTimer <= 0) {
+                        m.isDashing = false;
+                        m.dashTimer = m.dashInterval + Math.random() * 1500;
+                    }
+                }
+
+                if (!m.isDashing) {
+                    m.y += m.ySpeed;
+                }
+
+                if (m.y > canvas.height + m.radius) {
+                    mold.splice(i, 1);
+                }
+            }
+        }
+
+        function spawnMold(timestamp) {
+            if (timestamp - lastMoldSpawnTime > moldSpawnInterval) {
+                const nextType = MOLD_TYPES_SEQUENCE[moldTypeCounter % MOLD_TYPES_SEQUENCE.length];
+                moldTypeCounter++;
+
+                const newMold = createMold(nextType, moldSpeed);
+                mold.push(newMold);
+                lastMoldSpawnTime = timestamp;
+            }
+        }
+
+        function fireBullet() {
+            if (isGameOver || !isGameStarted) return;
+            
+            const BULLET_SPEED = 6;
+            const BULLET_RADIUS = currentCannonConfig.bulletRadius || 4;
+            const BULLET_COLOR = currentCannonConfig.bulletColor || '#bdc3c7';
+
+            // --- 正緣 (Zhengyuan) 霰彈模式 ---
+            if (currentCannonConfig.name === '正緣') {
+                const scatterAngles = [-5, 0, 5]; // 角度偏差 (度)
+                scatterAngles.forEach(angleDeg => {
+                    // 轉換角度為弧度，並調整為 y 軸朝上的方向 (-90 度是正上方)
+                    const angleRad = (angleDeg - 90) * (Math.PI / 180);
+                    const vx = Math.cos(angleRad) * BULLET_SPEED;
+                    const vy = Math.sin(angleRad) * BULLET_SPEED;
+                    
+                    bullets.push({
+                        x: cannon.x + (cannon.width / 2),
+                        y: cannon.y,
+                        radius: BULLET_RADIUS,
+                        speedX: vx, // 斜向速度
+                        speedY: vy,
+                        color: BULLET_COLOR,
+                        type: 'normal',
+                        durability: 1, // 霰彈不穿透
+                    });
+                });
+            } 
+            // --- 破魔 (Pomo) / 豐盛 (Fengsheng) 一般射擊模式 ---
+            else {
+                bullets.push({
+                    x: cannon.x + (cannon.width / 2),
+                    y: cannon.y,
+                    radius: BULLET_RADIUS,
+                    speed: BULLET_SPEED,
+                    color: BULLET_COLOR,
+                    type: currentCannonConfig.name === '破魔' ? 'pomo' : 'normal',
+                    durability: currentCannonConfig.name === '破魔' ? 3 : 1, 
+                });
+            }
+        }
+        
+        function createHitEffect(x, y) {
+            explosions.push({
+                x: x,
+                y: y,
+                radius: 2,
+                maxRadius: 15,
+                color: 'rgba(255, 255, 255, 1)',
+                life: 30,
+                maxLife: 30
+            });
+        }
+
+        function updateExplosions() {
+            for (let i = explosions.length - 1; i >= 0; i--) {
+                let exp = explosions[i];
+                exp.life--;
+                exp.radius += (exp.maxRadius - exp.radius) * 0.1;
+                if (exp.life <= 0) {
+                    explosions.splice(i, 1);
+                }
+            }
+        }
+
+        function checkCollisions() {
+            // 1. 子彈與黴菌的碰撞檢查
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                let b = bullets[i];
+                let bulletDestroyedInLoop = false;
+                
+                // 內層循環檢查子彈是否與任何黴菌碰撞
+                for (let j = mold.length - 1; j >= 0; j--) {
+                    let m = mold[j];
+
+                    const dx = b.x - m.x;
+                    const dy = b.y - m.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < b.radius + m.radius) {
+                        // 命中！
+
+                        // --- 破魔 (Pomo) 邏輯處理 ---
+                        if (b.type === 'pomo') {
+                            if (m.type === 'huge') {
+                                // 破魔打巨人黴菌: 造成 3 點傷害，子彈耐久耗盡
+                                m.health -= 3; 
+                                bulletDestroyedInLoop = true;
+                            } else {
+                                // 破魔打普通黴菌: 造成 1 點傷害，子彈耐久度 -1
+                                m.health -= 1;
+                                b.durability--;
+                                if (b.durability <= 0) {
+                                    bulletDestroyedInLoop = true;
+                                }
+                            }
+                        } else {
+                            // --- 普通/正緣/豐盛 邏輯處理 ---
+                            m.health -= 1; // 造成 1 點傷害
+                            bulletDestroyedInLoop = true; // 普通子彈命中即銷毀
+                        }
+                        
+                        // --- 黴菌狀態更新 ---
+                        if (m.health <= 0) {
+                            mold.splice(j, 1);
+                            score += 10;
+                            checkDifficultyUpgrade();
+                            updateUI();
+                            createHitEffect(m.x, m.y);
+                            // 這裡移除了錯誤的 j++; 因為在向後迭代的 splice 中不需要它
+                        } else {
+                            // 黴菌被擊中視覺效果
+                            m.isHit = true;
+                            m.hitTimer = 100;
+                            
+                            // 巨人黴菌縮小邏輯
+                            if (m.type === 'huge') {
+                                if (m.health <= 4) { m.radius = m.normalRadius; } 
+                                else if (m.health <= 8) { m.radius = m.medRadius; } 
+                                else { m.radius = m.maxRadius; }
+                            }
+                        }
+                        
+                        // 檢查子彈是否要停止繼續檢查其他黴菌
+                        if (bulletDestroyedInLoop) {
+                            break; // 子彈已銷毀或耐久耗盡，跳出內層循環
+                        }
+                        
+                        // 如果是破魔子彈且耐久度仍大於 0，則繼續內層循環檢查下一個黴菌
+                        if (b.type === 'pomo' && b.durability > 0) {
+                            continue; 
+                        }
+                    }
+                } // 內層循環結束 (所有黴菌檢查完畢)
+                
+                // 銷毀外層循環中的子彈
+                if (bulletDestroyedInLoop) {
+                    bullets.splice(i, 1);
+                }
+            } // 外層循環結束 (所有子彈檢查完畢)
+
+            // 2. 黴菌與砲台的碰撞檢查 (撞擊到砲台即扣血)
+            for (let i = mold.length - 1; i >= 0; i--) {
+                let m = mold[i];
+                
+                // 計算黴菌中心點到砲台矩形最近點的距離
+                const closestX = Math.max(cannon.x, Math.min(m.x, cannon.x + cannon.width));
+                const closestY = Math.max(cannon.y, Math.min(m.y, cannon.y + cannon.height));
+                
+                const dx = m.x - closestX;
+                const dy = m.y - closestY;
+                const distanceSq = dx * dx + dy * dy;
+
+                if (distanceSq < m.radius * m.radius) {
+                    lives--;
+                    mold.splice(i, 1);
+                    updateUI();
+                    applyDamageVisuals(); // 應用傷害視覺效果
+
+                    if (lives <= 0) {
+                        isGameOver = true;
+                        showGameOver();
+                        return;
+                    }
+                }
+            }
+        }
+
+        function showGameOver() {
+            isGameStarted = false;
+            selectionContainer.innerHTML = '';
+            messageTitle.textContent = '遊戲結束！';
+            messageText.textContent = `您的最終得分是: ${score} (等級 ${difficultyLevel})`;
+            startRestartButton.textContent = '重新開始';
+            messageBox.style.display = 'flex';
+            
+            leftButton.style.display = 'none';
+            rightButton.style.display = 'none';
+        }
+
+        function hideMessage() {
+            messageBox.style.display = 'none';
+            selectionContainer.innerHTML = '';
+        }
+
+        // 遊戲主循環
+        function gameLoop(timestamp) {
+            if (!isGameStarted || isGameOver) {
+                gameLoopRunning = false;
+                return;
+            }
+
+            updateDamageVisuals(timestamp);
+
+            ctx.save();
+            ctx.translate(shakeOffset, 0); // 應用震動效果
+            
+            ctx.fillStyle = getBackgroundColor(difficultyLevel);
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 處理自動射擊
+            if (timestamp - lastFireTime > autoFireInterval) {
+                fireBullet();
+                lastFireTime = timestamp;
+            }
+
+            updateCannonPosition();
+            spawnMold(timestamp);
+            updateBullets();
+            updateMold();
+            checkCollisions();
+            updateExplosions();
+
+            mold.forEach(drawMold);
+            bullets.forEach(drawBullet);
+            drawCannon();
+            drawExplosions();
+            
+            ctx.restore(); // 移除震動的 translate 效果
+            
+            drawDamageVisuals(timestamp);
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- 事件監聽器 ---
+
+        document.addEventListener('keydown', (e) => {
+            if (isGameStarted) {
+                if (e.code === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+                    leftPressed = true;
+                } else if (e.code === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+                    rightPressed = true;
+                }
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+                leftPressed = false;
+            } else if (e.code === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+                rightPressed = false;
+            }
+        });
+
+        function startMove(direction) {
+            if (direction === 'left') {
+                leftPressed = true;
+            } else if (direction === 'right') {
+                rightPressed = true;
+            }
+        }
+        
+        function stopMove() {
+            leftPressed = false;
+            rightPressed = false;
+        }
+
+        // 觸控按鈕
+        leftButton.addEventListener('mousedown', () => startMove('left'));
+        leftButton.addEventListener('touchstart', (e) => { e.preventDefault(); if(isGameStarted) startMove('left'); });
+        leftButton.addEventListener('mouseup', stopMove);
+        leftButton.addEventListener('touchend', stopMove);
+        leftButton.addEventListener('touchcancel', stopMove);
+
+        rightButton.addEventListener('mousedown', () => startMove('right'));
+        rightButton.addEventListener('touchstart', (e) => { e.preventDefault(); if(isGameStarted) startMove('right'); });
+        rightButton.addEventListener('mouseup', stopMove);
+        rightButton.addEventListener('touchend', stopMove);
+        rightButton.addEventListener('touchcancel', stopMove);
+
+        // 開始/重新開始按鈕邏輯
+        startRestartButton.addEventListener('click', () => {
+            if (isGameOver) {
+                // 遊戲結束，重置並顯示選擇畫面
+                initGame();
+            } else if (!isGameStarted) {
+                // 開始遊戲
+                startGame();
+            }
+        });
+
+        // 首次啟動遊戲，進入開始畫面
+        initGame();
+    </script>
 
 </body>
 </html>
-
